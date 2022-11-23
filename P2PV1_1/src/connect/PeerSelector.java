@@ -35,8 +35,10 @@ public class PeerSelector {
             PeerLogger.changePreferredNeighbors(
                     peerRegister.getSelfID(), new ArrayList<>(unchokedNeighbors));
             synchronized (unchokedNeighbors) {
-                peerRegister.updateUnchokedNeighbors(unchokedNeighbors);
+                peerRegister.updateUnchokedNeighbors(interestedNeighbors, unchokedNeighbors);
             }
+            logger.log(Level.INFO, "Interested Neighbors " + interestedNeighbors);
+            logger.log(Level.INFO, "Update Unchoked Neighbors " + unchokedNeighbors);
         }, 0, Common.unchokingInterval, TimeUnit.SECONDS);
 
         scheduler.scheduleWithFixedDelay(() -> {
@@ -50,12 +52,14 @@ public class PeerSelector {
                     peerRegister.updateOptimisticallyUnchokedNeighbor(peerID);
                 }
             }
+            logger.log(Level.INFO, "Update Optimistically Unchoked Neighbor " + optimisticallyUnchokedNeighbors[0]);
         }, 0, Common.optimisticUnchokingInterval, TimeUnit.SECONDS);
     }
 
     public void downloadRegister(int neighborID) {
         synchronized (downloadRateTable) {
             downloadRateTable.put(neighborID, new DownloadRateTableEntry(neighborID));
+            logger.log(Level.INFO, "download table register neighbor " + neighborID);
         }
     }
 
@@ -95,17 +99,19 @@ public class PeerSelector {
     public void addInterestedNeighbor(int neighborID) {
         synchronized (interestedNeighbors) {
             interestedNeighbors.add(neighborID);
+            logger.log(Level.INFO, "new interested neighbor " + neighborID);
         }
     }
 
     public void removeInterestedNeighbor(int neighborID) {
         synchronized (interestedNeighbors) {
             interestedNeighbors.remove(neighborID);
+            logger.log(Level.INFO, "remove interested neighbor " + neighborID);
         }
     }
 
     private List<Integer> getRandomNeighborIDs() {
-        List<Integer> peerIDs = new ArrayList<>(downloadRateTable.keySet());
+        List<Integer> peerIDs = new ArrayList<>(interestedNeighbors);
         for (int i = 0; i < peerIDs.size(); i++) {
             int next = random.nextInt(peerIDs.size());
             int temp = peerIDs.get(i);

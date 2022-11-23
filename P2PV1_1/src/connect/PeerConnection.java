@@ -6,6 +6,7 @@ import utils.*;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.*;
 
 public class PeerConnection implements Runnable {
@@ -39,6 +40,7 @@ public class PeerConnection implements Runnable {
 
             if (PeerInfo.doesPeerHaveFile(selfID)) {
                 MessageSender.sendSelfBitfield(connection, neighborID, selfBitfield);
+                logger.log(Level.INFO, "After handshake send bitfield to neighbor " + neighborID);
             }
 
             int inputLength;
@@ -64,6 +66,7 @@ public class PeerConnection implements Runnable {
                     synchronized (chokeState) {
                         chokeState[0] = true;
                     }
+                    logger.log(Level.INFO, "choke by " + neighborID);
                 } else if (type == 1) { // unchoke
                     PeerLogger.unchoking(selfID, neighborID);
                     synchronized (chokeState) {
@@ -73,12 +76,15 @@ public class PeerConnection implements Runnable {
                     if (interestedPieceIndex != -1) {
                         MessageSender.sendRequest(connection, neighborID, interestedPieceIndex);
                     }
+                    logger.log(Level.INFO, "unchoke by " + neighborID);
                 } else if (type == 2) { // interested
                     peerRegister.addInterestedNeighbor(neighborID);
                     PeerLogger.interested(selfID, neighborID);
+                    logger.log(Level.INFO, "receive interested from " + neighborID);
                 } else if (type == 3) { // not interested
                     peerRegister.removeInterestedNeighbor(neighborID);
                     PeerLogger.notInterested(selfID, neighborID);
+                    logger.log(Level.INFO, "receive not interested from " + neighborID);
                 } else if (type == 4) { // have
                     inputStream.read(inputBuffer);
                     byte[] indexInByte = new byte[4];
@@ -91,7 +97,7 @@ public class PeerConnection implements Runnable {
                     } else {
                         MessageSender.sendNotInterested(connection, neighborID);
                     }
-
+                    logger.log(Level.INFO, "receive have " + index + " from " + neighborID);
                     if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
                         peerRegister.addCompletedPeer(neighborID);
                     }
@@ -119,6 +125,7 @@ public class PeerConnection implements Runnable {
                     byte[] indexInByte = new byte[4];
                     System.arraycopy(inputBuffer, 0, indexInByte, 0, 4);
                     int index = PeerUtils.bytes2Int(indexInByte);
+                    logger.log(Level.INFO, "receive request type message for piece " + index + " from neighbor " + neighborID);
                     MessageSender.sendHead(connection, 4 + BitfieldUtils.getPieceLength(index), (byte) 7);
 
                     inputStream.read(inputBuffer);
@@ -187,7 +194,6 @@ class PieceSender implements Runnable {
             RandomAccessFile targetFile = new RandomAccessFile(
                 PeerUtils.getTargetFilename(peerConnection.getSelfID()), "r")) {
 
-
             int inputLength = 0;
             byte[] inputBuffer = new byte[1024];
             InputStream inputStream = socket.getInputStream();
@@ -195,11 +201,12 @@ class PieceSender implements Runnable {
 
             // send index
             outputStream.write(PeerUtils.int2Bytes(index));
+            logger.log(Level.INFO, "be ready to send piece " + index + " to neighbor " + peerConnection.getNeighborID());
             inputStream.read(inputBuffer);
 
             // send content
-            long startPtr = index * BitfieldUtils.pieceSize;
-            long remainingContentLength = BitfieldUtils.getPieceLength(index);
+            int startPtr = index * BitfieldUtils.pieceSize;
+            int remainingContentLength = BitfieldUtils.getPieceLength(index);
             int readLength = 0;
             byte[] readBuffer = new byte[1024];
             targetFile.seek(startPtr);
@@ -213,11 +220,13 @@ class PieceSender implements Runnable {
                 if (remainingContentLength > readLength) {
                     outputStream.write(readBuffer);
                 } else {
-                    outputStream.write(readBuffer, 0, (int) remainingContentLength);
+                    outputStream.write(readBuffer, 0, remainingContentLength);
                 }
                 remainingContentLength -= readLength;
             }
+            logger.log(Level.INFO, "sent piece " + index + " data to " + peerConnection.getNeighborID());
         } catch (IOException e) {
+            e.printStackTrace();
             logger.log(Level.SEVERE, "Disconnected");
         }
     }
@@ -254,11 +263,12 @@ class PieceReceiver implements Runnable {
             byte[] indexInByte = new byte[4];
             System.arraycopy(inputBuffer, 0, indexInByte, 0, 4);
             int index = PeerUtils.bytes2Int(indexInByte);
+            logger.log(Level.INFO, "be ready to receive piece " + index + " from neighbor " + peerConnection.getNeighborID());
             outputStream.write(1);
 
             // receive content
-            long startPtr = index * BitfieldUtils.pieceSize;
-            long remainingContentLength = BitfieldUtils.getPieceLength(index);
+            int startPtr = index * BitfieldUtils.pieceSize;
+            int remainingContentLength = BitfieldUtils.getPieceLength(index);
             int readLength = 0;
             byte[] readBuffer = new byte[1024];
             targetFile.seek(startPtr);
@@ -274,10 +284,11 @@ class PieceReceiver implements Runnable {
                     if (remainingContentLength > readLength) {
                         targetFile.write(readBuffer);
                     } else {
-                        targetFile.write(readBuffer, 0, (int) remainingContentLength);
+                        targetFile.write(readBuffer, 0, remainingContentLength);
                     }
                     remainingContentLength -= readLength;
                 }
+                logger.log(Level.INFO, "received piece " + index + " data from " + peerConnection.getNeighborID());
             }
 
             if (remainingContentLength == 0) {
@@ -292,6 +303,7 @@ class PieceReceiver implements Runnable {
                 }
             }
         } catch (IOException e) {
+            e.printStackTrace();
             logger.log(Level.SEVERE, "Disconnected");
         }
 

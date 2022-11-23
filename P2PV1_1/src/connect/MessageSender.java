@@ -45,7 +45,7 @@ public class MessageSender {
 
         byte[] buffer = new byte[1];
 
-        byte[] lengthInByte = PeerUtils.long2Bytes(length);
+        byte[] lengthInByte = PeerUtils.int2Bytes(length);
         outputStream.write(lengthInByte);
         outputStream.flush();
         inputStream.read(buffer);

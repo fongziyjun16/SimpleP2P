@@ -5,35 +5,34 @@ import connect.PeerRegister;
 import utils.*;
 
 import java.io.*;
-import java.util.Arrays;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.*;
 
 public class PeerController {
 
     private final int selfID;
-    private final byte[] selfBitfield;
+    private final List<Byte> selfBitfield = new ArrayList<>();
+
+    public static List<ReentrantLock> targetFileSegmentLocks = new ArrayList<>();
 
     public static ExecutorService threadPool = Executors.newCachedThreadPool();
-
-    public static final Integer[] targetFileSegmentLock = new Integer[BitfieldUtils.bitfieldLength];
 
     // runtime Logger
     private static final Logger logger = Logger.getLogger(PeerController.class.getName());
 
     public PeerController(int selfID) {
         this.selfID = selfID;
-        selfBitfield = new byte[BitfieldUtils.bitfieldLength];
         if (PeerInfo.doesPeerHaveFile(selfID)) {
-            Arrays.fill(selfBitfield, (byte) -1);
+            for (int i = 1; i <= BitfieldUtils.bitfieldLength; i++) {
+                selfBitfield.add((byte) -1);
+            }
         }
-        initialize();
-        for (int i = 0; i < BitfieldUtils.bitfieldLength; i++) {
-            targetFileSegmentLock[i] = 0;
+        // each piece has one lock
+        for (int i = 1; i <= BitfieldUtils.pieceNumber; i++) {
+            targetFileSegmentLocks.add(new ReentrantLock());
         }
-    }
-
-    private void initialize() {
         fileInitialize();
         new PeerRegister(selfID, selfBitfield);
     }
@@ -45,6 +44,7 @@ public class PeerController {
             if (!hasFile) {
                 // create work directory
                 File dir = new File("peer_" + selfID);
+                boolean test = dir.exists();
                 if (!dir.exists() && !dir.mkdir()) {
                     throw new RuntimeException("Fail to create directory");
                 }
@@ -79,5 +79,6 @@ public class PeerController {
             System.exit(1);
         }
     }
+
 
 }

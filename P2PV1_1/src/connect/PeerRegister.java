@@ -132,9 +132,9 @@ public class PeerRegister {
         peerSelector.removeInterestedNeighbor(neighborID);
     }
 
-    public void updateUnchokedNeighbors(Set<Integer> unchokedNeighbors) {
+    public void updateUnchokedNeighbors(Set<Integer> interestedNeighbors, Set<Integer> unchokedNeighbors) {
         // send unchoke and choke
-        for (int neighborID : connectedNeighbors.keySet()) {
+        for (int neighborID : interestedNeighbors) {
             PeerConnection peerConnection = connectedNeighbors.get(neighborID);
             if (unchokedNeighbors.contains(neighborID)) {
                 // send unchoke
