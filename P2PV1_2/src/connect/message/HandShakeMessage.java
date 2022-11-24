@@ -1,6 +1,10 @@
 package connect.message;
 
-public class HandShakeMessage {
+import java.io.Serializable;
+
+public class HandShakeMessage implements Serializable {
+
+    private static final long serialVersionUID = 8813636700808748900L;
 
     private final int peerID;
 
@@ -12,5 +16,4 @@ public class HandShakeMessage {
         return peerID;
     }
 
-    
 }
