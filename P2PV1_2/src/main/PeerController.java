@@ -13,7 +13,6 @@ import java.util.logging.*;
 public class PeerController {
 
     private final int selfID;
-    private final List<Byte> selfBitfield = new ArrayList<>();
 
     public static List<ReentrantLock> targetFileSegmentLocks = new ArrayList<>();
 
@@ -24,9 +23,10 @@ public class PeerController {
 
     public PeerController(int selfID) {
         this.selfID = selfID;
+        byte[] selfBitfield = new byte[BitfieldUtils.bitfieldLength];
         if (PeerInfo.doesPeerHaveFile(selfID)) {
-            for (int i = 1; i <= BitfieldUtils.bitfieldLength; i++) {
-                selfBitfield.add((byte) -1);
+            for (int i = 0; i < BitfieldUtils.bitfieldLength; i++) {
+                selfBitfield[i] = -1;
             }
         }
         // each piece has one lock

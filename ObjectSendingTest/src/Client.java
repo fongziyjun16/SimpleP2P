@@ -12,7 +12,8 @@ public class Client {
     private static final Logger logger = Logger.getLogger(Client.class.getName());
 
     public static void main(String[] args) {
-        randomAccessFileTest();
+//        randomAccessFileTest();
+        objectTest();
     }
 
     private static void randomAccessFileTest() {
@@ -75,6 +76,8 @@ public class Client {
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             oos.writeObject(new HandshakeMessage(1001));
             oos.writeObject(new ActualMessage(18, 1, "Hello".getBytes(StandardCharsets.UTF_8)));
+            Object o = ois.readObject();
+            System.out.println();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

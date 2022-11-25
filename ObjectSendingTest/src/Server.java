@@ -10,7 +10,8 @@ public class Server {
     private static final Logger logger = Logger.getLogger(Server.class.getName());
 
     public static void main(String[] args) {
-        randomAccessFileTest();
+//        randomAccessFileTest();
+        objectTest();
     }
 
     private static void randomAccessFileTest() {
@@ -67,6 +68,8 @@ public class Server {
                 ActualMessage actualMessage = (ActualMessage) ois.readObject();
                 System.out.println(new String(actualMessage.getPayload()));
 
+                System.out.println();
+                socket.close();
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

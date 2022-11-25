@@ -13,8 +13,8 @@ public class Common {
     public static final int unchokingInterval;
     public static final int optimisticUnchokingInterval;
     public static final String fileName;
-    public static final long fileSize;
-    public static final long pieceSize;
+    public static final int fileSize;
+    public static final int pieceSize;
 
     // runtime Logger
     private static final Logger logger = Logger.getLogger(Common.class.getName());
@@ -36,8 +36,8 @@ public class Common {
         unchokingInterval = Integer.parseInt(commonInfo.get("UnchokingInterval"));
         optimisticUnchokingInterval = Integer.parseInt(commonInfo.get("OptimisticUnchokingInterval"));
         fileName = commonInfo.get("FileName");
-        fileSize = Long.parseLong(commonInfo.get("FileSize"));
-        pieceSize = Long.parseLong(commonInfo.get("PieceSize"));
+        fileSize = Integer.parseInt(commonInfo.get("FileSize"));
+        pieceSize = Integer.parseInt(commonInfo.get("PieceSize"));
     }
 
 }
