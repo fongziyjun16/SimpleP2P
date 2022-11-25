@@ -85,12 +85,17 @@ public class PeerRegister {
         int neighborID = handShake(connection, isPositive);
         synchronized (connectedNeighbors) {
             if (!connectedNeighbors.containsKey(neighborID)) {
-                PeerConnection peerConnection = new PeerConnection(this, neighborID, connection);
-                connectedNeighbors.put(neighborID, peerConnection);
-                // peerSelector.downloadRegister(neighborID);
-                PeerLogger.makeConnection(selfID, neighborID);
-                // PeerController.threadPool.submit(peerConnection);
-                logger.log(Level.INFO, "Make Connection with " + neighborID);
+                try {
+                    PeerConnection peerConnection = new PeerConnection(this, neighborID, connection);
+                    connectedNeighbors.put(neighborID, peerConnection);
+                    // peerSelector.downloadRegister(neighborID);
+                    PeerLogger.makeConnection(selfID, neighborID);
+                    PeerController.threadPool.submit(peerConnection);
+                    logger.log(Level.INFO, "Make Connection with " + neighborID);
+                } catch (IOException e) {
+                    connectedNeighbors.remove(neighborID);
+                    throw new RuntimeException(e);
+                }
             }
         }
     }

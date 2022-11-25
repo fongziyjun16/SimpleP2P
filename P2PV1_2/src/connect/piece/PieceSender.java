@@ -30,6 +30,8 @@ public class PieceSender implements Runnable{
 
             
 
+            socket.close();
+            sendingPieceServer.close();
         } catch (IOException e) {
             e.printStackTrace();
             logger.log(Level.SEVERE, "Fail to Send Piece " + index + " to " + peerConnection.getNeighborID());

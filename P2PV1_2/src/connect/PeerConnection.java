@@ -2,6 +2,7 @@ package connect;
 
 import config.PeerInfo;
 import connect.message.type.*;
+import connect.piece.PieceReceiver;
 import connect.piece.PieceSender;
 import main.PeerController;
 import main.PeerLogger;
@@ -14,29 +15,35 @@ import java.util.logging.*;
 public class PeerConnection implements Runnable{
 
     private final PeerRegister peerRegister;
+
     private final int selfID;
     private final byte[] selfBitfield;
+
     private final int neighborID;
     private byte[] neighborBitfield;
+
     private final Socket socket;
+    private final ObjectInputStream ois;
+    private final ObjectOutputStream oos;
 
     private final boolean[] chokeState = {true}; // true -- choke, false unchoke
 
     // runtime logger
     private static final Logger logger = Logger.getLogger(PeerRegister.class.getName());
 
-    public PeerConnection(PeerRegister peerRegister, int neighborID, Socket connection) {
+    public PeerConnection(PeerRegister peerRegister, int neighborID, Socket connection) throws IOException {
         this.peerRegister = peerRegister;
         selfID = peerRegister.getSelfID();
         selfBitfield = peerRegister.getSelfBitfield();
         this.neighborID = neighborID;
         this.socket = connection;
+        ois = new ObjectInputStream(socket.getInputStream());
+        oos = new ObjectOutputStream(socket.getOutputStream());
     }
 
     @Override
     public void run() {
-        try (ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
-             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream())) {
+        try {
             PeerLogger.receiveConnection(selfID, neighborID);
 
             if (PeerInfo.doesPeerHaveFile(selfID)) {
@@ -102,8 +109,10 @@ public class PeerConnection implements Runnable{
                     }
                 } else if (receivedMessage instanceof PieceMessage) {
                     PieceMessage pieceMessage = (PieceMessage) receivedMessage;
-
+                    PeerController.threadPool.submit(
+                            new PieceReceiver(this, pieceMessage.getPort(), pieceMessage.getIndex()));
                 }
+                // close connection
             }
         } catch (Exception e) {
             e.printStackTrace();

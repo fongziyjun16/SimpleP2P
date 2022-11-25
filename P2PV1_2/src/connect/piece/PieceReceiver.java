@@ -24,11 +24,9 @@ public class PieceReceiver implements Runnable{
 
     @Override
     public void run() {
-        try {
-            Socket socket = new Socket(PeerInfo.getPeerAddress(peerConnection.getNeighborID()), sendingServerPort);
+        try (Socket socket = new Socket(PeerInfo.getPeerAddress(peerConnection.getNeighborID()), sendingServerPort)) {
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-
 
 
         } catch (IOException e) {
