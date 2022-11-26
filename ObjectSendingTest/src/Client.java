@@ -52,7 +52,7 @@ public class Client {
             logger.log(Level.INFO, "request piece " + index);
             try (Socket socket = new Socket("localhost", 10010);
                  RandomAccessFile targetFile = new RandomAccessFile(targetFilename, "rw")) {
-                targetFile.seek(index * pieceSize);
+                    targetFile.seek(index * pieceSize);
 
                 InputStream inputStream = socket.getInputStream();
                 OutputStream outputStream = socket.getOutputStream();

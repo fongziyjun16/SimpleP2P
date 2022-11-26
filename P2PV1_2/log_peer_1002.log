@@ -1,0 +1,9 @@
+11-25-2022 22:27:39: Peer 1002 has the preferred neighbors -1.
+11-25-2022 22:27:39: Peer 1002 makes a connection to Peer 1001.
+11-25-2022 22:27:39: Peer 1002 has the preferred neighbors [].
+11-25-2022 22:27:39: Peer 1002 is connected from Peer 1001.
+11-25-2022 22:27:43: Peer 1002 is unchoked by Peer 1001.
+11-25-2022 22:27:43: Peer 1002 has downloaded the piece 35 from 1001.Now the number of pieces it has is 0.
+11-25-2022 22:27:44: Peer 1002 has the preferred neighbors [].
+11-25-2022 22:27:49: Peer 1002 has the preferred neighbors -1.
+11-25-2022 22:27:49: Peer 1002 has the preferred neighbors [].

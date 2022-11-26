@@ -34,26 +34,26 @@ public class PieceReceiver implements Runnable{
             OutputStream outputStream = socket.getOutputStream();
 
             targetFile.seek((long) index * Common.pieceSize);
-            int contentLength = index == BitfieldUtils.pieceNumber - 1 ? (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
-            int receivedLength = 0;
+            int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
+                    (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
 
             int inputLength;
             byte[] inputBuffer = new byte[1024];
             outputStream.write(1);
 
-            while ((inputLength = inputStream.read(inputBuffer)) != -1) {
-                synchronized (peerConnection.getChokeState()) {
-                    if (peerConnection.getChokeState()[0]) {
-                        break;
-                    }
-                }
+            logger.log(Level.INFO, "Ready to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
+            while ((inputLength = inputStream.read(inputBuffer)) != -1 && contentLength != 0) {
                 targetFile.write(inputBuffer, 0, inputLength);
-                receivedLength += inputLength;
+                contentLength -= inputLength;
                 peerConnection.addDownloadedCapacity(inputLength);
             }
 
-            if (receivedLength == inputLength) {
+            logger.log(Level.INFO, "contentLength is " + contentLength);
+            if (contentLength == 0) {
                 peerConnection.receivedPiece(index);
+                logger.log(Level.INFO, "Successfully Receive " + index + " from neighbor " + peerConnection.getNeighborID());
+            } else {
+                logger.log(Level.SEVERE, "Fail to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
             }
         } catch (IOException e) {
             e.printStackTrace();

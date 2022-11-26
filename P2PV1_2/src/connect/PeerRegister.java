@@ -1,11 +1,8 @@
 package connect;
 
 import config.*;
-import connect.message.HandshakeMessage;
-import connect.message.type.ChokeMessage;
-import connect.message.type.EndMessage;
-import connect.message.type.HaveMessage;
-import connect.message.type.UnchokeMessage;
+import connect.message.*;
+import connect.message.type.*;
 import main.*;
 import utils.PeerUtils;
 
@@ -61,7 +58,7 @@ public class PeerRegister {
     }
 
     private void buildPositiveConnection() {
-        for (Integer neighborID : PeerInfo.getPeerIDs()) {
+        for (int neighborID : PeerInfo.getPeerIDs()) {
             if (neighborID != selfID) {
                 String neighborAddress = PeerInfo.getPeerAddress(neighborID);
                 int neighborPort = PeerInfo.getPeerPort(neighborID);
@@ -87,13 +84,21 @@ public class PeerRegister {
 
     private void connectionInitialize(Socket connection, boolean isPositive) throws Exception {
         connection.setKeepAlive(true);
-        int neighborID = handShake(connection, isPositive);
+        ObjectInputStream ois = null;
+        ObjectOutputStream oos = null;
+        if (isPositive) {
+            oos = new ObjectOutputStream(connection.getOutputStream());
+            ois = new ObjectInputStream(connection.getInputStream());
+        } else {
+            ois = new ObjectInputStream(connection.getInputStream());
+            oos = new ObjectOutputStream(connection.getOutputStream());
+        }
+        int neighborID = handShake(connection, ois, oos);
         synchronized (connectedNeighbors) {
             if (!connectedNeighbors.containsKey(neighborID)) {
                 try {
-                    PeerConnection peerConnection = new PeerConnection(this, neighborID, connection);
+                    PeerConnection peerConnection = new PeerConnection(this, neighborID, connection, ois, oos);
                     connectedNeighbors.put(neighborID, peerConnection);
-                    // peerSelector.downloadRegister(neighborID);
                     PeerLogger.makeConnection(selfID, neighborID);
                     PeerController.threadPool.submit(peerConnection);
                     logger.log(Level.INFO, "Make Connection with " + neighborID);
@@ -105,22 +110,11 @@ public class PeerRegister {
         }
     }
 
-    private int handShake(Socket connection, boolean isPositive) throws Exception {
+    private int handShake(Socket connection, ObjectInputStream ois, ObjectOutputStream oos) throws Exception {
         // receive message & extract neighbor id
         try {
-            ObjectInputStream ois = null;
-            ObjectOutputStream oos = null;
-            if (isPositive) {
-                oos = new ObjectOutputStream(connection.getOutputStream());
-                ois = new ObjectInputStream(connection.getInputStream());
-            } else {
-                ois = new ObjectInputStream(connection.getInputStream());
-                oos = new ObjectOutputStream(connection.getOutputStream());
-            }
-
             // send handshake
-            HandshakeMessage sentHandshakeMessage = new HandshakeMessage(selfID);
-            oos.writeObject(sentHandshakeMessage);
+            oos.writeObject(new HandshakeMessage(selfID));
 
             Object receivedMessage = ois.readObject();
             if (receivedMessage instanceof HandshakeMessage) {
@@ -187,6 +181,7 @@ public class PeerRegister {
                         synchronized (peerConnection) {
                             try {
                                 peerConnection.getOOS().writeObject(new UnchokeMessage());
+                                peerConnection.getChokeState()[0] = false;
                             } catch (Exception e) {
                                 logger.log(Level.SEVERE, "Fail to Send Unchoke Message to Neighbor " + peerConnection.getNeighborID());
                             }
@@ -200,6 +195,7 @@ public class PeerRegister {
                         synchronized (peerConnection) {
                             try {
                                 peerConnection.getOOS().writeObject(new ChokeMessage());
+                                peerConnection.getChokeState()[0] = true;
                             } catch (Exception e) {
                                 logger.log(Level.SEVERE, "Fail to Send Choke Message to Neighbor " + peerConnection.getNeighborID());
                             }
@@ -216,6 +212,7 @@ public class PeerRegister {
         synchronized (peerConnection) {
             try {
                 peerConnection.getOOS().writeObject(new UnchokeMessage());
+                peerConnection.getChokeState()[0] = false;
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Fail to Send Unchoke Message to Neighbor " + peerConnection.getNeighborID());
             }

@@ -27,8 +27,6 @@ public class PeerSelector {
     private final Set<Integer> unchokeNeighbors = new HashSet<>();
     private final int[] optimisticallyUnchokeNeighbors = {-1};
 
-    private final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(4);
-
     private final static Random random = new Random();
     // runtime Logger
     private final static Logger logger = Logger.getLogger(PeerSelector.class.getName());
@@ -36,6 +34,7 @@ public class PeerSelector {
     public PeerSelector(PeerRegister peerRegister) {
         this.peerRegister = peerRegister;
 
+        ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(4);
         scheduler.scheduleWithFixedDelay(() -> {
             updateUnchokedNeighbors();
             PeerLogger.changePreferredNeighbors(

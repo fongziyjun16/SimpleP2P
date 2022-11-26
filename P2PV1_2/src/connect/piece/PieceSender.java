@@ -32,12 +32,14 @@ public class PieceSender implements Runnable{
             OutputStream outputStream = socket.getOutputStream();
 
             targetFile.seek((long) index * Common.pieceSize);
-            int contentLength = index == BitfieldUtils.pieceNumber - 1 ? (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
+            int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
+                    (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
 
             inputStream.read(new byte[1024]);
 
             long readLength = 0;
             byte[] readBuffer = new byte[1024];
+            logger.log(Level.INFO, "Ready to Send " + index + " to neighbor " + peerConnection.getNeighborID());
             while ((readLength = targetFile.read(readBuffer)) != -1 && contentLength != 0) {
                 synchronized (peerConnection.getChokeState()) {
                     if (peerConnection.getChokeState()[0]) {
@@ -46,12 +48,18 @@ public class PieceSender implements Runnable{
                 }
                 if (contentLength > readLength) {
                     outputStream.write(readBuffer);
+                    contentLength -= readLength;
                 } else {
-                    outputStream.write(readBuffer, 0, (int) contentLength);
+                    outputStream.write(readBuffer, 0, contentLength);
+                    contentLength = 0;
                 }
-                contentLength -= readLength;
             }
 
+            if (contentLength == 0) {
+                logger.log(Level.INFO, "Successfully Send " + index + " to neighbor " + peerConnection.getNeighborID());
+            } else {
+                logger.log(Level.INFO, "Interrupted Sending " + index + " to neighbor " + peerConnection.getNeighborID());
+            }
             socket.close();
             sendingPieceServer.close();
         } catch (IOException e) {

@@ -1,0 +1,8 @@
+11-25-2022 22:27:38: Peer 1001 has the preferred neighbors [].
+11-25-2022 22:27:38: Peer 1001 has the preferred neighbors -1.
+11-25-2022 22:27:39: Peer 1001 makes a connection to Peer 1002.
+11-25-2022 22:27:39: Peer 1001 is connected from Peer 1002.
+11-25-2022 22:27:39: Peer 1001 received the 'interested' message from 1002.
+11-25-2022 22:27:43: Peer 1001 has the preferred neighbors [1002].
+11-25-2022 22:27:48: Peer 1001 has the preferred neighbors -1.
+11-25-2022 22:27:48: Peer 1001 has the preferred neighbors [1002].

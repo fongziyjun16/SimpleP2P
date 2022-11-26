@@ -31,14 +31,15 @@ public class PeerConnection implements Runnable{
     // runtime logger
     private static final Logger logger = Logger.getLogger(PeerRegister.class.getName());
 
-    public PeerConnection(PeerRegister peerRegister, int neighborID, Socket connection) throws IOException {
+    public PeerConnection(PeerRegister peerRegister, int neighborID,
+                          Socket connection, ObjectInputStream ois, ObjectOutputStream oos) throws IOException {
         this.peerRegister = peerRegister;
         selfID = peerRegister.getSelfID();
         selfBitfield = peerRegister.getSelfBitfield();
         this.neighborID = neighborID;
         this.socket = connection;
-        ois = new ObjectInputStream(socket.getInputStream());
-        oos = new ObjectOutputStream(socket.getOutputStream());
+        this.ois = ois;
+        this.oos = oos;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class PeerConnection implements Runnable{
                     logger.log(Level.INFO, "Receive Choke from neighbor " + neighborID);
                 } else if (receivedMessage instanceof UnchokeMessage) {
                     synchronized (chokeState) {
-                        chokeState[0] = true;
+                        chokeState[0] = false;
                     }
                     int interestedIndex = BitfieldUtils.randomSelectOneInterested(selfBitfield, neighborBitfield);
                     if (interestedIndex != -1) {
@@ -110,13 +111,15 @@ public class PeerConnection implements Runnable{
                     } catch (Exception e) {
                         logger.log(Level.SEVERE, "Fail to Send Request to neighbor " + neighborID);
                     }
+                    logger.log(Level.INFO, "Receive Request from neighbor " + neighborID);
                 } else if (receivedMessage instanceof PieceMessage) {
                     PieceMessage pieceMessage = (PieceMessage) receivedMessage;
-                    PeerLogger.downloadingOnePiece(selfID, neighborID, pieceMessage.getIndex(),
-                            BitfieldUtils.numberOfPiecesHaving(selfBitfield));
                     PeerController.threadPool.submit(
                             new PieceReceiver(this, pieceMessage.getPort(), pieceMessage.getIndex()));
+                    logger.log(Level.INFO, "Receive Piece from neighbor " + neighborID);
                 } else if (receivedMessage instanceof EndMessage) {
+                    socket.close();
+                    logger.log(Level.INFO, "Receive End from neighbor " + neighborID);
                     break;
                 }
             }
@@ -128,9 +131,21 @@ public class PeerConnection implements Runnable{
 
     public void receivedPiece(int index) {
         BitfieldUtils.received(selfBitfield, index);
+        PeerLogger.downloadingOnePiece(selfID, neighborID, index,
+                BitfieldUtils.numberOfPiecesHaving(selfBitfield));
         peerRegister.sendHave(index);
         if (BitfieldUtils.doesHaveCompleteFile(selfBitfield)) {
             peerRegister.addCompletedPeer(selfID);
+        } else {
+            synchronized (chokeState) {
+                if (!chokeState[0]) {
+                    try {
+                        oos.writeObject(new RequestMessage(BitfieldUtils.randomSelectOneInterested(selfBitfield, neighborBitfield)));
+                    } catch (Exception e) {
+                        logger.log(Level.INFO, "Fail to send Request to neighbor " + neighborID);
+                    }
+                }
+            }
         }
     }
 
