@@ -46,7 +46,15 @@ public class PeerSelector {
         }, 0, Common.unchokingInterval, TimeUnit.SECONDS);
 
         scheduler.scheduleWithFixedDelay(() -> {
-
+            updateOptimisticallyUnchokedNeighbor();
+            PeerLogger.changeOptimisticallyUnchokedNeighbor(
+                    peerRegister.getSelfID(), optimisticallyUnchokeNeighbors[0]);
+            synchronized (optimisticallyUnchokeNeighbors) {
+                int peerID = optimisticallyUnchokeNeighbors[0];
+                if (peerID != -1) {
+                    peerRegister.updateOptimisticallyUnchokedNeighbor(peerID);
+                }
+            }
         }, 0, Common.optimisticUnchokingInterval, TimeUnit.SECONDS);
     }
 
