@@ -59,4 +59,30 @@ public class BitfieldUtils {
         }
     }
 
+    public static int numberOfPiecesHaving(byte[] bitfield) {
+        synchronized (bitfield) {
+            int count = 0;
+            for (int i = 0; i < bitfield.length; i++) {
+                for (int j = 7; j >= 0; j--) {
+                    byte base = (byte) (1 << j);
+                    if ((bitfield[i] & base) != 0) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+    }
+
+    public static boolean doesHaveCompleteFile(byte[] bitfield) {
+        synchronized (bitfield) {
+            for (int i = 0; i < bitfield.length; i++) {
+                if (bitfield[i] != (byte) 128) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
 }

@@ -2,6 +2,10 @@ package connect;
 
 import config.*;
 import connect.message.HandshakeMessage;
+import connect.message.type.ChokeMessage;
+import connect.message.type.EndMessage;
+import connect.message.type.HaveMessage;
+import connect.message.type.UnchokeMessage;
 import main.*;
 import utils.PeerUtils;
 
@@ -16,6 +20,7 @@ public class PeerRegister {
     private final byte[] selfBitfield;
 
     private final Map<Integer, PeerConnection> connectedNeighbors = new HashMap<>();
+    private final Set<Integer> completedPeers = new HashSet<>();
 
     private final PeerSelector peerSelector;
 
@@ -137,6 +142,84 @@ public class PeerRegister {
 
     public void removeInterested(int neighborID) {
         peerSelector.removeInterested(neighborID);
+    }
+
+    public void sendHave(int index) {
+        for (PeerConnection peerConnection : connectedNeighbors.values()) {
+            synchronized (peerConnection) {
+                try {
+                    peerConnection.getOOS().writeObject(new HaveMessage(index));
+                } catch (IOException e) {
+                    logger.log(Level.SEVERE, "Fail to Send Have Message to Neighbor " + peerConnection.getNeighborID());
+                }
+            }
+        }
+    }
+
+    public void addCompletedPeer(int peerID) {
+        synchronized (completedPeers) {
+            completedPeers.add(peerID);
+            if (completedPeers.size() == PeerInfo.getPeerIDs().size()) {
+                logger.log(Level.INFO, "Successfully Receive Complete File");
+                for (PeerConnection peerConnection : connectedNeighbors.values()) {
+                    try {
+                        peerConnection.getOOS().writeObject(new EndMessage());
+                    } catch (IOException e) {
+                        logger.log(Level.SEVERE, "Fail to Send End Message to Neighbor " + peerConnection.getNeighborID());
+                    }
+                }
+            }
+        }
+    }
+
+    public void addDownloadedCapacity(int peerID, long byteNumber) {
+        peerSelector.addDownloadBytes(peerID, byteNumber);
+    }
+
+    public void updateUnchokedNeighbors(Set<Integer> interestedNeighbors, Set<Integer> unchokeNeighbors) {
+        // send unchoke and choke
+        for (int neighborID : interestedNeighbors) {
+            PeerConnection peerConnection = connectedNeighbors.get(neighborID);
+            if (unchokeNeighbors.contains(neighborID)) {
+                // send unchoke
+                synchronized (peerConnection.getChokeState()) {
+                    if (peerConnection.getChokeState()[0]) {
+                        synchronized (peerConnection) {
+                            try {
+                                peerConnection.getOOS().writeObject(new UnchokeMessage());
+                            } catch (Exception e) {
+                                logger.log(Level.SEVERE, "Fail to Send Unchoke Message to Neighbor " + peerConnection.getNeighborID());
+                            }
+                        }
+                    }
+                }
+            } else {
+                // send choke
+                synchronized (peerConnection.getChokeState()) {
+                    if (peerConnection.getChokeState()[0]) {
+                        synchronized (peerConnection) {
+                            try {
+                                peerConnection.getOOS().writeObject(new ChokeMessage());
+                            } catch (Exception e) {
+                                logger.log(Level.SEVERE, "Fail to Send Choke Message to Neighbor " + peerConnection.getNeighborID());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void updateOptimisticallyUnchokedNeighbor(int neighborID) {
+        // send unchoke
+        PeerConnection peerConnection = connectedNeighbors.get(neighborID);
+        synchronized (peerConnection) {
+            try {
+                peerConnection.getOOS().writeObject(new UnchokeMessage());
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Fail to Send Unchoke Message to Neighbor " + peerConnection.getNeighborID());
+            }
+        }
     }
 
     public int getSelfID() {

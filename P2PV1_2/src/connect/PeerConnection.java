@@ -22,11 +22,11 @@ public class PeerConnection implements Runnable{
     private final int neighborID;
     private byte[] neighborBitfield;
 
+    private final boolean[] chokeState = {true}; // true -- choke, false unchoke
+
     private final Socket socket;
     private final ObjectInputStream ois;
     private final ObjectOutputStream oos;
-
-    private final boolean[] chokeState = {true}; // true -- choke, false unchoke
 
     // runtime logger
     private static final Logger logger = Logger.getLogger(PeerRegister.class.getName());
@@ -82,6 +82,9 @@ public class PeerConnection implements Runnable{
                 } else if (receivedMessage instanceof HaveMessage) {
                     HaveMessage haveMessage = (HaveMessage) receivedMessage;
                     BitfieldUtils.received(neighborBitfield, haveMessage.getIndex());
+                    if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
+                        peerRegister.addCompletedPeer(neighborID);
+                    }
                     PeerLogger.have(selfID, neighborID, haveMessage.getIndex());
                     logger.log(Level.INFO, "Receive Not Interested from neighbor " + neighborID);
                 } else if (receivedMessage instanceof BitfieldMessage) {
@@ -109,10 +112,13 @@ public class PeerConnection implements Runnable{
                     }
                 } else if (receivedMessage instanceof PieceMessage) {
                     PieceMessage pieceMessage = (PieceMessage) receivedMessage;
+                    PeerLogger.downloadingOnePiece(selfID, neighborID, pieceMessage.getIndex(),
+                            BitfieldUtils.numberOfPiecesHaving(selfBitfield));
                     PeerController.threadPool.submit(
                             new PieceReceiver(this, pieceMessage.getPort(), pieceMessage.getIndex()));
+                } else if (receivedMessage instanceof EndMessage) {
+                    break;
                 }
-                // close connection
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -120,19 +126,31 @@ public class PeerConnection implements Runnable{
         logger.log(Level.INFO, "Close Connection with " + neighborID);
     }
 
-    public int getSelfID() {
-        return selfID;
+    public void receivedPiece(int index) {
+        BitfieldUtils.received(selfBitfield, index);
+        peerRegister.sendHave(index);
+        if (BitfieldUtils.doesHaveCompleteFile(selfBitfield)) {
+            peerRegister.addCompletedPeer(selfID);
+        }
     }
 
-    public byte[] getSelfBitfield() {
-        return selfBitfield;
+    public void addDownloadedCapacity(int capacity) {
+        peerRegister.addDownloadedCapacity(neighborID, capacity);
+    }
+
+    public int getSelfID() {
+        return selfID;
     }
 
     public int getNeighborID() {
         return neighborID;
     }
 
-    public Socket getSocket() {
-        return socket;
+    public boolean[] getChokeState() {
+        return chokeState;
+    }
+
+    public ObjectOutputStream getOOS() {
+        return oos;
     }
 }

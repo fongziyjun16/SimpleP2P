@@ -1,6 +1,9 @@
 package connect.piece;
 
+import config.Common;
 import connect.PeerConnection;
+import utils.BitfieldUtils;
+import utils.PeerUtils;
 
 import java.io.*;
 import java.net.*;
@@ -23,12 +26,31 @@ public class PieceSender implements Runnable{
 
     @Override
     public void run() {
-        try {
+        try (RandomAccessFile targetFile = new RandomAccessFile(PeerUtils.getTargetFilename(peerConnection.getSelfID()), "r")) {
             Socket socket = sendingPieceServer.accept();
-            ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
-            ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+            InputStream inputStream = socket.getInputStream();
+            OutputStream outputStream = socket.getOutputStream();
 
-            
+            targetFile.seek((long) index * Common.pieceSize);
+            int contentLength = index == BitfieldUtils.pieceNumber - 1 ? (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
+
+            inputStream.read(new byte[1024]);
+
+            long readLength = 0;
+            byte[] readBuffer = new byte[1024];
+            while ((readLength = targetFile.read(readBuffer)) != -1 && contentLength != 0) {
+                synchronized (peerConnection.getChokeState()) {
+                    if (peerConnection.getChokeState()[0]) {
+                        break;
+                    }
+                }
+                if (contentLength > readLength) {
+                    outputStream.write(readBuffer);
+                } else {
+                    outputStream.write(readBuffer, 0, (int) contentLength);
+                }
+                contentLength -= readLength;
+            }
 
             socket.close();
             sendingPieceServer.close();

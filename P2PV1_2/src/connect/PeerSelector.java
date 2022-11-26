@@ -1,6 +1,7 @@
 package connect;
 
-import config.Common;
+import config.*;
+import main.PeerLogger;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -36,7 +37,12 @@ public class PeerSelector {
         this.peerRegister = peerRegister;
 
         scheduler.scheduleWithFixedDelay(() -> {
-
+            updateUnchokedNeighbors();
+            PeerLogger.changePreferredNeighbors(
+                    peerRegister.getSelfID(), new ArrayList<>(unchokeNeighbors));
+            synchronized (unchokeNeighbors) {
+                peerRegister.updateUnchokedNeighbors(interestedNeighbors, unchokeNeighbors);
+            }
         }, 0, Common.unchokingInterval, TimeUnit.SECONDS);
 
         scheduler.scheduleWithFixedDelay(() -> {
@@ -58,6 +64,89 @@ public class PeerSelector {
             downloadRateTable.remove(neighborID);
             if (optimisticallyUnchokeNeighbors[0] == neighborID) {
                 optimisticallyUnchokeNeighbors[0] = -1;
+            }
+        }
+    }
+
+    public void addDownloadBytes(int neighborID, long byteNumber) {
+        synchronized (downloadRateTable) {
+            DownloadRateTableEntry entry = downloadRateTable.get(neighborID);
+            entry.amount += byteNumber;
+        }
+    }
+
+    private List<Integer> topK() {
+        synchronized (downloadRateTable) {
+            int k = Common.numberOfPreferredNeighbors;
+            List<Integer> selected = new ArrayList<>();
+            PriorityQueue<DownloadRateTableEntry> pq =
+                    new PriorityQueue<>((e1, e2) -> Long.compare(e2.amount, e1.amount));
+            for (DownloadRateTableEntry entry : downloadRateTable.values()) {
+                pq.offer(entry);
+            }
+            while (!pq.isEmpty() && k > 0) {
+                selected.add(pq.poll().id);
+                k--;
+            }
+            return selected;
+        }
+    }
+
+    private void resetDownloadTable() {
+        synchronized (downloadRateTable) {
+            for (DownloadRateTableEntry entry : downloadRateTable.values()) {
+                entry.amount = 0;
+            }
+        }
+    }
+
+    private List<Integer> getRandomNeighborIDs() {
+        List<Integer> peerIDs = new ArrayList<>(interestedNeighbors);
+        for (int i = 0; i < peerIDs.size(); i++) {
+            int next = random.nextInt(peerIDs.size());
+            int temp = peerIDs.get(i);
+            peerIDs.set(i, peerIDs.get(next));
+            peerIDs.set(next, temp);
+        }
+        return peerIDs;
+    }
+
+    private void updateUnchokedNeighbors() {
+        synchronized (unchokeNeighbors) {
+            unchokeNeighbors.clear();
+            if (!PeerInfo.doesPeerHaveFile(peerRegister.getSelfID())) {
+                List<Integer> topNeighbors = topK();
+                synchronized (interestedNeighbors) {
+                    for (Integer topNeighbor : topNeighbors) {
+                        if (interestedNeighbors.contains(topNeighbor)) {
+                            unchokeNeighbors.add(topNeighbor);
+                        }
+                    }
+                }
+                resetDownloadTable();
+            } else {
+                List<Integer> randomNeighborIDs = getRandomNeighborIDs();
+                for (Integer randomNeighborID : randomNeighborIDs) {
+                    unchokeNeighbors.add(randomNeighborID);
+                    if (unchokeNeighbors.size() == Common.numberOfPreferredNeighbors) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateOptimisticallyUnchokedNeighbor() {
+        synchronized (optimisticallyUnchokeNeighbors) {
+            List<Integer> randomNeighborIDs = getRandomNeighborIDs();
+            synchronized (interestedNeighbors) {
+                for (Integer randomNeighborID : randomNeighborIDs) {
+                    if (!unchokeNeighbors.contains(randomNeighborID) &&
+                            interestedNeighbors.contains(randomNeighborID)) {
+                        optimisticallyUnchokeNeighbors[0] = randomNeighborID;
+                        break;
+                    }
+                }
             }
         }
     }

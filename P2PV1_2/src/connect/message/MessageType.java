@@ -9,7 +9,8 @@ public enum MessageType {
     HAVE("have", 4),
     BITFIELD("bitfield", 5),
     REQUEST("request", 6),
-    PIECE("piece", 7);
+    PIECE("piece", 7),
+    END("end", 8);
 
     private final String name;
     private final int value;
