@@ -39,7 +39,7 @@ public class PeerLogger {
 
     // change of optimistically unchoked neighbor
     public static void changeOptimisticallyUnchokedNeighbor(int selfID, int optimisticallyUnchokedNeighborID) {
-        write(selfID, "Peer " + selfID + " has the preferred neighbors " +
+        write(selfID, "Peer " + selfID + " has the optimistically unchoked neighbor " +
                 optimisticallyUnchokedNeighborID + ".");
     }
 

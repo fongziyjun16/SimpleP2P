@@ -12,7 +12,7 @@ import java.io.*;
 import java.net.*;
 import java.util.logging.*;
 
-public class PeerConnection implements Runnable{
+public class PeerConnection implements Runnable {
 
     private final PeerRegister peerRegister;
 
@@ -20,7 +20,7 @@ public class PeerConnection implements Runnable{
     private final byte[] selfBitfield;
 
     private final int neighborID;
-    private byte[] neighborBitfield;
+    private byte[] neighborBitfield = new byte[BitfieldUtils.bitfieldLength];
 
     private final boolean[] chokeState = {true}; // true -- choke, false unchoke
 
@@ -47,8 +47,10 @@ public class PeerConnection implements Runnable{
         try {
             PeerLogger.receiveConnection(selfID, neighborID);
 
-            if (PeerInfo.doesPeerHaveFile(selfID)) {
-                oos.writeObject(new BitfieldMessage(selfBitfield));
+            if (BitfieldUtils.numberOfPiecesHaving(selfBitfield) > 0) {
+                synchronized (this) {
+                    oos.writeObject(new BitfieldMessage(selfBitfield));
+                }
                 logger.log(Level.INFO, "After handshake send bitfield to neighbor " + neighborID);
             }
 
@@ -86,11 +88,21 @@ public class PeerConnection implements Runnable{
                     if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
                         peerRegister.addCompletedPeer(neighborID);
                     }
+                    if (BitfieldUtils.isInterested(selfBitfield, haveMessage.getIndex())) {
+                        synchronized (this) {
+                            oos.writeObject(new InterestedMessage());
+                        }
+                    }
                     PeerLogger.have(selfID, neighborID, haveMessage.getIndex());
                     logger.log(Level.INFO, "Receive Not Interested from neighbor " + neighborID);
                 } else if (receivedMessage instanceof BitfieldMessage) {
                     BitfieldMessage bitfieldMessage = (BitfieldMessage) receivedMessage;
                     neighborBitfield = bitfieldMessage.getBitfield();
+                    synchronized (this) {
+                        if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
+                            peerRegister.addCompletedPeer(neighborID);
+                        }
+                    }
                     synchronized (this) {
                         if (BitfieldUtils.isInterested(selfBitfield, neighborBitfield)) {
                             oos.writeObject(new InterestedMessage());
@@ -111,14 +123,17 @@ public class PeerConnection implements Runnable{
                     } catch (Exception e) {
                         logger.log(Level.SEVERE, "Fail to Send Request to neighbor " + neighborID);
                     }
-                    logger.log(Level.INFO, "Receive Request from neighbor " + neighborID);
+                    logger.log(Level.INFO, "Receive Request Piece " + index + " from neighbor " + neighborID);
                 } else if (receivedMessage instanceof PieceMessage) {
                     PieceMessage pieceMessage = (PieceMessage) receivedMessage;
                     PeerController.threadPool.submit(
                             new PieceReceiver(this, pieceMessage.getPort(), pieceMessage.getIndex()));
                     logger.log(Level.INFO, "Receive Piece from neighbor " + neighborID);
                 } else if (receivedMessage instanceof EndMessage) {
-                    socket.close();
+                    synchronized (this) {
+                        oos.writeObject(new EndMessage());
+                    }
+                    peerRegister.neighborEnd(neighborID);
                     logger.log(Level.INFO, "Receive End from neighbor " + neighborID);
                     break;
                 }
@@ -135,15 +150,34 @@ public class PeerConnection implements Runnable{
                 BitfieldUtils.numberOfPiecesHaving(selfBitfield));
         peerRegister.sendHave(index);
         if (BitfieldUtils.doesHaveCompleteFile(selfBitfield)) {
+            synchronized (this) {
+                try {
+                    oos.writeObject(new NotInterestedMessage());
+                } catch (IOException e) {
+                    logger.log(Level.INFO, "Fail to send Not Interested to neighbor " + neighborID);
+                }
+            }
             peerRegister.addCompletedPeer(selfID);
+            PeerLogger.completionOfDownload(selfID);
         } else {
             synchronized (chokeState) {
                 if (!chokeState[0]) {
-                    try {
-                        oos.writeObject(new RequestMessage(BitfieldUtils.randomSelectOneInterested(selfBitfield, neighborBitfield)));
-                    } catch (Exception e) {
-                        logger.log(Level.INFO, "Fail to send Request to neighbor " + neighborID);
+                    synchronized (this) {
+                        try {
+                            oos.writeObject(new RequestMessage(BitfieldUtils.randomSelectOneInterested(selfBitfield, neighborBitfield)));
+                        } catch (Exception e) {
+                            logger.log(Level.INFO, "Fail to send Request to neighbor " + neighborID);
+                        }
                     }
+                }
+            }
+        }
+        if (!BitfieldUtils.isInterested(selfBitfield, neighborBitfield)) {
+            synchronized (this) {
+                try {
+                    oos.writeObject(new NotInterestedMessage());
+                } catch (Exception e) {
+                    logger.log(Level.INFO, "Fail to send Not Interest to neighbor " + neighborID);
                 }
             }
         }

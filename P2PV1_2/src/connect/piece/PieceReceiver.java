@@ -3,6 +3,7 @@ package connect.piece;
 import config.Common;
 import config.PeerInfo;
 import connect.PeerConnection;
+import main.PeerController;
 import main.PeerLogger;
 import utils.BitfieldUtils;
 import utils.PeerUtils;
@@ -31,7 +32,6 @@ public class PieceReceiver implements Runnable{
         try (Socket socket = new Socket(PeerInfo.getPeerAddress(peerConnection.getNeighborID()), sendingServerPort);
              RandomAccessFile targetFile = new RandomAccessFile(PeerUtils.getTargetFilename(peerConnection.getSelfID()), "rw")) {
             InputStream inputStream = socket.getInputStream();
-            OutputStream outputStream = socket.getOutputStream();
 
             targetFile.seek((long) index * Common.pieceSize);
             int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
@@ -39,14 +39,14 @@ public class PieceReceiver implements Runnable{
 
             int inputLength;
             byte[] inputBuffer = new byte[1024];
-            outputStream.write(1);
 
             logger.log(Level.INFO, "Ready to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
-            while ((inputLength = inputStream.read(inputBuffer)) != -1 && contentLength != 0) {
-                targetFile.write(inputBuffer);
-                contentLength -= inputLength;
-                System.out.println(contentLength);
-                peerConnection.addDownloadedCapacity(inputLength);
+            synchronized (PeerController.targetFileSegmentLocks.get(index)) {
+                while ((inputLength = inputStream.read(inputBuffer)) != -1 && contentLength != 0) {
+                    targetFile.write(inputBuffer);
+                    contentLength -= inputLength;
+                    peerConnection.addDownloadedCapacity(inputLength);
+                }
             }
 
             if (contentLength == 0) {
@@ -55,7 +55,7 @@ public class PieceReceiver implements Runnable{
             } else {
                 logger.log(Level.SEVERE, "Fail to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             logger.log(Level.SEVERE, "Fail to Receive Piece " + index + " to " + peerConnection.getNeighborID());
         }

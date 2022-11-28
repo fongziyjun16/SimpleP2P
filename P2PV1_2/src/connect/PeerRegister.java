@@ -18,6 +18,7 @@ public class PeerRegister {
 
     private final Map<Integer, PeerConnection> connectedNeighbors = new HashMap<>();
     private final Set<Integer> completedPeers = new HashSet<>();
+    private final Set<Integer> endNeighbors = new HashSet<>();
 
     private final PeerSelector peerSelector;
 
@@ -27,6 +28,9 @@ public class PeerRegister {
     public PeerRegister(int selfID, byte[] selfBitfield) {
         this.selfID = selfID;
         this.selfBitfield = selfBitfield;
+        if (PeerInfo.doesPeerHaveFile(selfID)) {
+            completedPeers.add(selfID);
+        }
         buildConnection();
         peerSelector = new PeerSelector(this);
     }
@@ -40,7 +44,8 @@ public class PeerRegister {
 
     private void buildNegativeConnection() {
         PeerController.threadPool.submit(() -> {
-            try (ServerSocket serverSocket = new ServerSocket(PeerInfo.getPeerPort(selfID))) {
+            try {
+                ServerSocket serverSocket = new ServerSocket(PeerInfo.getPeerPort(selfID));
                 while (true) {
                     Socket connection = serverSocket.accept();
                     try {
@@ -50,7 +55,13 @@ public class PeerRegister {
                                 PeerUtils.getConnectionWholeAddress(connection) +
                                 ". Exception Message: " + e.getMessage());
                     }
+                    synchronized (connectedNeighbors) {
+                        if (connectedNeighbors.size() == PeerInfo.getPeerIDs().size() - 1) {
+                            break;
+                        }
+                    }
                 }
+                serverSocket.close();
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Fail to build negative connection server");
             }
@@ -65,6 +76,11 @@ public class PeerRegister {
                 PeerController.threadPool.submit(() -> {
                     while (true) {
                         try {
+                            synchronized (endNeighbors) {
+                                if (endNeighbors.contains(neighborID)) {
+                                    break;
+                                }
+                            }
                             connectionInitialize(new Socket(neighborAddress, neighborPort), true);
                             break;
                         } catch (Exception e) {
@@ -99,6 +115,7 @@ public class PeerRegister {
                 try {
                     PeerConnection peerConnection = new PeerConnection(this, neighborID, connection, ois, oos);
                     connectedNeighbors.put(neighborID, peerConnection);
+                    peerSelector.downloadRegister(neighborID);
                     PeerLogger.makeConnection(selfID, neighborID);
                     PeerController.threadPool.submit(peerConnection);
                     logger.log(Level.INFO, "Make Connection with " + neighborID);
@@ -153,13 +170,17 @@ public class PeerRegister {
     public void addCompletedPeer(int peerID) {
         synchronized (completedPeers) {
             completedPeers.add(peerID);
+            logger.log(Level.INFO, "Finished Peers: " + completedPeers);
             if (completedPeers.size() == PeerInfo.getPeerIDs().size()) {
-                logger.log(Level.INFO, "Successfully Receive Complete File");
+                logger.log(Level.INFO, "All Neighbors Successfully Receive Complete File");
                 for (PeerConnection peerConnection : connectedNeighbors.values()) {
-                    try {
-                        peerConnection.getOOS().writeObject(new EndMessage());
-                    } catch (IOException e) {
-                        logger.log(Level.SEVERE, "Fail to Send End Message to Neighbor " + peerConnection.getNeighborID());
+                    synchronized (peerConnection) {
+                        try {
+                            peerConnection.getOOS().writeObject(new EndMessage());
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            logger.log(Level.SEVERE, "Fail to Send End Message to Neighbor " + peerConnection.getNeighborID());
+                        }
                     }
                 }
             }
@@ -171,6 +192,7 @@ public class PeerRegister {
     }
 
     public void updateUnchokedNeighbors(Set<Integer> interestedNeighbors, Set<Integer> unchokeNeighbors) {
+        PeerLogger.changePreferredNeighbors(selfID, new ArrayList<>(unchokeNeighbors));
         // send unchoke and choke
         for (int neighborID : interestedNeighbors) {
             PeerConnection peerConnection = connectedNeighbors.get(neighborID);
@@ -207,14 +229,25 @@ public class PeerRegister {
     }
 
     public void updateOptimisticallyUnchokedNeighbor(int neighborID) {
+        PeerLogger.changeOptimisticallyUnchokedNeighbor(selfID, neighborID);
         // send unchoke
         PeerConnection peerConnection = connectedNeighbors.get(neighborID);
-        synchronized (peerConnection) {
+        synchronized (peerConnection.getOOS()) {
             try {
                 peerConnection.getOOS().writeObject(new UnchokeMessage());
                 peerConnection.getChokeState()[0] = false;
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Fail to Send Unchoke Message to Neighbor " + peerConnection.getNeighborID());
+            }
+        }
+    }
+
+    public void neighborEnd(int neighborID) {
+        synchronized (endNeighbors) {
+            endNeighbors.add(neighborID);
+            if (endNeighbors.size() == PeerInfo.getPeerIDs().size() - 1) {
+                peerSelector.stopScheduler();
+                PeerController.stop();
             }
         }
     }

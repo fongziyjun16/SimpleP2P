@@ -25,8 +25,8 @@ public class PeerController {
         this.selfID = selfID;
         byte[] selfBitfield = new byte[BitfieldUtils.bitfieldLength];
         if (PeerInfo.doesPeerHaveFile(selfID)) {
-            for (int i = 0; i < BitfieldUtils.bitfieldLength; i++) {
-                selfBitfield[i] = -1;
+            for (int i = 0; i < BitfieldUtils.pieceNumber; i++) {
+                BitfieldUtils.received(selfBitfield, i);
             }
         }
         // each piece has one lock
@@ -80,5 +80,9 @@ public class PeerController {
         }
     }
 
+    public static void stop() {
+        threadPool.shutdownNow();
+        logger.log(Level.INFO, "PeerController Stops");
+    }
 
 }

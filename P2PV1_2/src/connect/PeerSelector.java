@@ -13,12 +13,14 @@ public class PeerSelector {
 
         int id;
         long amount;
+
         public DownloadRateTableEntry(int id) {
             this.id = id;
             amount = 0;
         }
 
     }
+
     private final PeerRegister peerRegister;
 
     private final Map<Integer, DownloadRateTableEntry> downloadRateTable = new HashMap<>();
@@ -27,6 +29,8 @@ public class PeerSelector {
     private final Set<Integer> unchokeNeighbors = new HashSet<>();
     private final int[] optimisticallyUnchokeNeighbors = {-1};
 
+    private final ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(4);
+
     private final static Random random = new Random();
     // runtime Logger
     private final static Logger logger = Logger.getLogger(PeerSelector.class.getName());
@@ -34,11 +38,8 @@ public class PeerSelector {
     public PeerSelector(PeerRegister peerRegister) {
         this.peerRegister = peerRegister;
 
-        ScheduledExecutorService scheduler = new ScheduledThreadPoolExecutor(4);
         scheduler.scheduleWithFixedDelay(() -> {
             updateUnchokedNeighbors();
-            PeerLogger.changePreferredNeighbors(
-                    peerRegister.getSelfID(), new ArrayList<>(unchokeNeighbors));
             synchronized (unchokeNeighbors) {
                 peerRegister.updateUnchokedNeighbors(interestedNeighbors, unchokeNeighbors);
             }
@@ -46,8 +47,6 @@ public class PeerSelector {
 
         scheduler.scheduleWithFixedDelay(() -> {
             updateOptimisticallyUnchokedNeighbor();
-            PeerLogger.changeOptimisticallyUnchokedNeighbor(
-                    peerRegister.getSelfID(), optimisticallyUnchokeNeighbors[0]);
             synchronized (optimisticallyUnchokeNeighbors) {
                 int peerID = optimisticallyUnchokeNeighbors[0];
                 if (peerID != -1) {
@@ -57,10 +56,17 @@ public class PeerSelector {
         }, 0, Common.optimisticUnchokingInterval, TimeUnit.SECONDS);
     }
 
+
+    public void downloadRegister(int neighborID) {
+        synchronized (downloadRateTable) {
+            downloadRateTable.put(neighborID, new DownloadRateTableEntry(neighborID));
+            logger.log(Level.INFO, "download table register neighbor " + neighborID);
+        }
+    }
+
     public void addInterested(int neighborID) {
         synchronized (this) {
             interestedNeighbors.add(neighborID);
-            downloadRateTable.put(neighborID, new DownloadRateTableEntry(neighborID));
         }
     }
 
@@ -68,7 +74,6 @@ public class PeerSelector {
         synchronized (this) {
             interestedNeighbors.remove(neighborID);
             unchokeNeighbors.remove(neighborID);
-            downloadRateTable.remove(neighborID);
             if (optimisticallyUnchokeNeighbors[0] == neighborID) {
                 optimisticallyUnchokeNeighbors[0] = -1;
             }
@@ -89,12 +94,19 @@ public class PeerSelector {
             PriorityQueue<DownloadRateTableEntry> pq =
                     new PriorityQueue<>((e1, e2) -> Long.compare(e2.amount, e1.amount));
             for (DownloadRateTableEntry entry : downloadRateTable.values()) {
-                pq.offer(entry);
+                if (interestedNeighbors.contains(entry.id)) {
+                    pq.offer(entry);
+                }
             }
             while (!pq.isEmpty() && k > 0) {
                 selected.add(pq.poll().id);
                 k--;
             }
+            List<String> topKResult = new ArrayList<>();
+            for (int peerID : selected) {
+                topKResult.add(peerID + ":" + downloadRateTable.get(peerID).amount);
+            }
+            logger.log(Level.INFO, "top k: " + topKResult);
             return selected;
         }
     }
@@ -156,6 +168,11 @@ public class PeerSelector {
                 }
             }
         }
+    }
+
+    public void stopScheduler() {
+        logger.log(Level.INFO, "Stop Scheduler");
+        scheduler.shutdown();
     }
 
 }
