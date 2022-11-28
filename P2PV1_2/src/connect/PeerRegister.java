@@ -37,9 +37,7 @@ public class PeerRegister {
 
     private void buildConnection() {
         buildNegativeConnection();
-        if (!PeerInfo.doesPeerHaveFile(selfID)) {
-            buildPositiveConnection();
-        }
+        buildPositiveConnection();
     }
 
     private void buildNegativeConnection() {
