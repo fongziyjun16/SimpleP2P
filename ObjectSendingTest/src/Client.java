@@ -13,7 +13,8 @@ public class Client {
 
     public static void main(String[] args) {
 //        randomAccessFileTest();
-        objectTest();
+//        objectTest();
+        connectTest();
     }
 
     private static void randomAccessFileTest() {
@@ -52,7 +53,8 @@ public class Client {
             logger.log(Level.INFO, "request piece " + index);
             try (Socket socket = new Socket("localhost", 10010);
                  RandomAccessFile targetFile = new RandomAccessFile(targetFilename, "rw")) {
-                    targetFile.seek(index * pieceSize);
+
+                targetFile.seek(index * pieceSize);
 
                 InputStream inputStream = socket.getInputStream();
                 OutputStream outputStream = socket.getOutputStream();
@@ -81,6 +83,23 @@ public class Client {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void connectTest() {
+        try {
+            Socket socket = new Socket("localhost", 10010);
+            InputStream inputStream = socket.getInputStream();
+            int inputLength;
+            byte[] inputBuffer = new byte[1024];
+            while ((inputLength = inputStream.read(inputBuffer)) != -1) {
+
+            }
+            System.out.println(inputLength);
+            System.out.println("close");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
 }

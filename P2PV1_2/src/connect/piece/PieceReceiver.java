@@ -43,12 +43,12 @@ public class PieceReceiver implements Runnable{
 
             logger.log(Level.INFO, "Ready to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
             while ((inputLength = inputStream.read(inputBuffer)) != -1 && contentLength != 0) {
-                targetFile.write(inputBuffer, 0, inputLength);
+                targetFile.write(inputBuffer);
                 contentLength -= inputLength;
+                System.out.println(contentLength);
                 peerConnection.addDownloadedCapacity(inputLength);
             }
 
-            logger.log(Level.INFO, "contentLength is " + contentLength);
             if (contentLength == 0) {
                 peerConnection.receivedPiece(index);
                 logger.log(Level.INFO, "Successfully Receive " + index + " from neighbor " + peerConnection.getNeighborID());

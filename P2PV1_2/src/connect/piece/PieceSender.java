@@ -35,7 +35,7 @@ public class PieceSender implements Runnable{
             int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
                     (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
 
-            inputStream.read(new byte[1024]);
+            inputStream.read(new byte[1]);
 
             long readLength = 0;
             byte[] readBuffer = new byte[1024];
@@ -54,14 +54,15 @@ public class PieceSender implements Runnable{
                     contentLength = 0;
                 }
             }
+            outputStream.flush();
+            socket.shutdownOutput();
+            socket.close();
 
             if (contentLength == 0) {
                 logger.log(Level.INFO, "Successfully Send " + index + " to neighbor " + peerConnection.getNeighborID());
             } else {
                 logger.log(Level.INFO, "Interrupted Sending " + index + " to neighbor " + peerConnection.getNeighborID());
             }
-            socket.close();
-            sendingPieceServer.close();
         } catch (IOException e) {
             e.printStackTrace();
             logger.log(Level.SEVERE, "Fail to Send Piece " + index + " to " + peerConnection.getNeighborID());

@@ -11,7 +11,8 @@ public class Server {
 
     public static void main(String[] args) {
 //        randomAccessFileTest();
-        objectTest();
+//        objectTest();
+        connectTest();
     }
 
     private static void randomAccessFileTest() {
@@ -72,6 +73,15 @@ public class Server {
                 socket.close();
             }
         } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void connectTest() {
+        try (ServerSocket server = new ServerSocket(10010)) {
+            Socket socket = server.accept();
+            socket.close();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
