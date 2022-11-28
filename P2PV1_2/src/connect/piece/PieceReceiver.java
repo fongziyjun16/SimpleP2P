@@ -34,16 +34,15 @@ public class PieceReceiver implements Runnable{
             InputStream inputStream = socket.getInputStream();
 
             targetFile.seek((long) index * Common.pieceSize);
-            int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
-                    (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
+            int contentLength = BitfieldUtils.getContentLength(index);
 
             int inputLength;
             byte[] inputBuffer = new byte[1024];
 
-            logger.log(Level.INFO, "Ready to Receive " + index + " from neighbor " + peerConnection.getNeighborID());
+            logger.log(Level.INFO, "Ready to Receive " + index + " with length " + contentLength + " from neighbor " + peerConnection.getNeighborID());
             synchronized (PeerController.targetFileSegmentLocks.get(index)) {
                 while ((inputLength = inputStream.read(inputBuffer)) != -1 && contentLength != 0) {
-                    targetFile.write(inputBuffer);
+                    targetFile.write(inputBuffer, 0, inputLength);
                     contentLength -= inputLength;
                     peerConnection.addDownloadedCapacity(inputLength);
                 }

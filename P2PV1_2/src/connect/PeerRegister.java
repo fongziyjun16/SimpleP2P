@@ -248,6 +248,7 @@ public class PeerRegister {
             if (endNeighbors.size() == PeerInfo.getPeerIDs().size() - 1) {
                 peerSelector.stopScheduler();
                 PeerController.stop();
+                System.exit(0);
             }
         }
     }

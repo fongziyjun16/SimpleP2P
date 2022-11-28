@@ -10,9 +10,9 @@ public class Server {
     private static final Logger logger = Logger.getLogger(Server.class.getName());
 
     public static void main(String[] args) {
-//        randomAccessFileTest();
+        randomAccessFileTest();
 //        objectTest();
-        connectTest();
+//        connectTest();
     }
 
     private static void randomAccessFileTest() {
@@ -21,37 +21,47 @@ public class Server {
         String targetFilename = "./server/thefile";
         long fileSize = 2167705;
         long pieceSize = 16384;
+
+        // FileSize 24301474
+        // PieceSize 16384
+//        String targetFilename = "./server/tree.jpg";
+//        long fileSize = 24301474;
+//        long pieceSize = 16384;
+
         long pieceNumber = fileSize / pieceSize + (fileSize % pieceSize == 0 ? 0 : 1);
 
         try (ServerSocket server = new ServerSocket(10010);
              RandomAccessFile targetFile = new RandomAccessFile(targetFilename, "r")) {
             while (true) {
                 Socket socket = server.accept();
-                InputStream inputStream = socket.getInputStream();
-                OutputStream outputStream = socket.getOutputStream();
+                ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
 
-                byte[] inputBuffer = new byte[1024];
-                inputStream.read(inputBuffer);
-                byte[] indexInByte = new byte[4];
-                System.arraycopy(inputBuffer, 0, indexInByte, 0, 4);
-                int index = ByteBuffer.wrap(indexInByte).getInt();
-                logger.log(Level.INFO, "response piece " + index);
+                PieceInfoMessage pieceInfoMessage = (PieceInfoMessage) ois.readObject();
+                int index = pieceInfoMessage.getIndex();
+                logger.log(Level.INFO, "ready to response piece " + index);
 
-                long contentLength = index == pieceNumber - 1 ? (fileSize - pieceSize * index): pieceSize;
+                targetFile.seek(index * pieceSize);
+                logger.log(Level.INFO, "File Pointer " + targetFile.getFilePointer());
+
+                long contentLength = index == pieceNumber - 1 ? (fileSize - pieceSize * index) : pieceSize;
                 long readLength = 0;
                 byte[] readBuffer = new byte[1024];
                 while ((readLength = targetFile.read(readBuffer)) != -1 && contentLength != 0) {
                     if (contentLength > readLength) {
-                        outputStream.write(readBuffer);
+                        socket.getOutputStream().write(readBuffer);
+                        contentLength -= readLength;
                     } else {
-                        outputStream.write(readBuffer, 0, (int) contentLength);
+                        socket.getOutputStream().write(readBuffer, 0, (int) contentLength);
+                        contentLength = 0;
                     }
-                    contentLength -= readLength;
+                    logger.log(Level.INFO, "File Pointer " + targetFile.getFilePointer());
                 }
+
                 logger.log(Level.INFO, "sent piece " + index);
                 socket.close();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

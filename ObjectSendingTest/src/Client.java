@@ -12,15 +12,24 @@ public class Client {
     private static final Logger logger = Logger.getLogger(Client.class.getName());
 
     public static void main(String[] args) {
-//        randomAccessFileTest();
+        randomAccessFileTest();
 //        objectTest();
-        connectTest();
+//        connectTest();
     }
 
     private static void randomAccessFileTest() {
+        // FileSize 2167705
+        // PieceSize 16384
         String targetFilename = "./client/thefile";
         long fileSize = 2167705;
         long pieceSize = 16384;
+
+        // FileSize 24301474
+        // PieceSize 16384
+//        String targetFilename = "./client/tree.jpg";
+//        long fileSize = 24301474;
+//        long pieceSize = 16384;
+
         long pieceNumber = fileSize / pieceSize + (fileSize % pieceSize == 0 ? 0 : 1);
 
         File file = new File(targetFilename);
@@ -49,31 +58,34 @@ public class Client {
             indices.set(next, temp);
         }
 
-        for (Integer index : indices) {
+        for (int index : indices) {
             logger.log(Level.INFO, "request piece " + index);
             try (Socket socket = new Socket("localhost", 10010);
-                 RandomAccessFile targetFile = new RandomAccessFile(targetFilename, "rw")) {
+                 RandomAccessFile targetFile = new RandomAccessFile(targetFilename, "rwd")) {
+                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
+                ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
+
+                oos.writeObject(new PieceInfoMessage(index));
 
                 targetFile.seek(index * pieceSize);
+                logger.log(Level.INFO, "File Pointer " + targetFile.getFilePointer());
 
-                InputStream inputStream = socket.getInputStream();
-                OutputStream outputStream = socket.getOutputStream();
-
-                outputStream.write(ByteBuffer.allocate(4).putInt(index).array());
                 int inputLength;
                 byte[] inputBuffer = new byte[1024];
-                while ((inputLength = inputStream.read(inputBuffer)) != -1) {
-                    targetFile.write(inputBuffer);
+                while ((inputLength = socket.getInputStream().read(inputBuffer)) != -1) {
+                    targetFile.write(inputBuffer, 0, inputLength);
+                    logger.log(Level.INFO, "File Pointer " + targetFile.getFilePointer());
                 }
-            } catch (IOException e) {
+
+                logger.log(Level.INFO, "received piece " + index);
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
-            logger.log(Level.INFO, "received piece " + index);
         }
     }
 
     private static void objectTest() {
-        try(Socket socket = new Socket("localhost", 10010);) {
+        try (Socket socket = new Socket("localhost", 10010);) {
             ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream ois = new ObjectInputStream(socket.getInputStream());
             oos.writeObject(new HandshakeMessage(1001));

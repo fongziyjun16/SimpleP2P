@@ -18,6 +18,10 @@ public class BitfieldUtils {
         bitfieldLength = pieceNumber / 8 + (pieceNumber % 8 == 0 ? 0 : 1);
     }
 
+    public static int getContentLength(int index) {
+        return index == pieceNumber - 1 ? (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
+    }
+
     public static boolean isInterested(byte[] selfBitfield, int index) {
         synchronized (selfBitfield) {
             int row = index / 8;

@@ -32,12 +32,11 @@ public class PieceSender implements Runnable{
             OutputStream outputStream = socket.getOutputStream();
 
             targetFile.seek((long) index * Common.pieceSize);
-            int contentLength = index == BitfieldUtils.pieceNumber - 1 ?
-                    (Common.fileSize - Common.pieceSize * index): Common.pieceSize;
+            int contentLength = BitfieldUtils.getContentLength(index);
 
             long readLength = 0;
             byte[] readBuffer = new byte[1024];
-            logger.log(Level.INFO, "Ready to Send " + index + " to neighbor " + peerConnection.getNeighborID());
+            logger.log(Level.INFO, "Ready to Send " + index + " with length " + contentLength + " to neighbor " + peerConnection.getNeighborID());
             synchronized (PeerController.targetFileSegmentLocks.get(index)) {
                 while ((readLength = targetFile.read(readBuffer)) != -1 && contentLength != 0) {
                     synchronized (peerConnection.getChokeState()) {
