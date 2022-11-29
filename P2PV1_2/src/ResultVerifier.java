@@ -39,7 +39,7 @@ public class ResultVerifier {
         for (int customer : customers) {
             String fileB = getFilename(customer);
             if (!compareFiles(fileA, fileB)) {
-                logger.log(Level.SEVERE, "ERROR!!! The specific file has to be same.");
+                logger.log(Level.SEVERE, "ERROR!!! The files received are broken.");
                 return;
             }
         }

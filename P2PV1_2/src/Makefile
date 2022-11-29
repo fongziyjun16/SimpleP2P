@@ -1,6 +1,5 @@
 peerProcess: peerProcess.java
 	javac peerProcess.java
-ResultVerifier: ResultVerifier.java
 	javac ResultVerifier.java
 clean:
 	rm -rf *.class
@@ -11,3 +10,4 @@ clean:
 	rm -rf ./connect/piece/*.class
 	rm -rf ./main/*.class
 	rm -rf ./utils/*.class
+	rm -rf ./*.log

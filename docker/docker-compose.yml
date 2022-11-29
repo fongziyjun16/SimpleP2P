@@ -13,7 +13,7 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.11
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1001"
   
   p2:
     image: jdk8:base
@@ -27,7 +27,7 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.12
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1002"
 
   p3:
     image: jdk8:base
@@ -41,7 +41,7 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.13
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1003"
   
   p4:
     image: jdk8:base
@@ -55,7 +55,7 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.14
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1004"
 
   p5:
     image: jdk8:base
@@ -69,7 +69,7 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.15
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1005"
   
   p6:
     image: jdk8:base
@@ -83,7 +83,49 @@ services:
     networks:
       net-p2p-10.9.0.0:
         ipv4_address: 10.9.0.16
-    command: /bin/bash
+    command: bash -c "cd ./p2p && java peerProcess 1006"
+
+  p7:
+    image: jdk8:base
+    container_name: p7-10.9.0.17
+    tty: true
+    cap_add:
+      - ALL
+    privileged: true
+    volumes:
+      - ./volumes/p2p:/opt/p2p
+    networks:
+      net-p2p-10.9.0.0:
+        ipv4_address: 10.9.0.17
+    command: bash -c "cd ./p2p && java peerProcess 1007"
+
+  p8:
+    image: jdk8:base
+    container_name: p8-10.9.0.18
+    tty: true
+    cap_add:
+      - ALL
+    privileged: true
+    volumes:
+      - ./volumes/p2p:/opt/p2p
+    networks:
+      net-p2p-10.9.0.0:
+        ipv4_address: 10.9.0.18
+    command: bash -c "cd ./p2p && java peerProcess 1008"
+
+  p9:
+    image: jdk8:base
+    container_name: p9-10.9.0.19
+    tty: true
+    cap_add:
+      - ALL
+    privileged: true
+    volumes:
+      - ./volumes/p2p:/opt/p2p
+    networks:
+      net-p2p-10.9.0.0:
+        ipv4_address: 10.9.0.19
+    command: bash -c "cd ./p2p && java peerProcess 1009"
 
 networks:
   net-p2p-10.9.0.0:

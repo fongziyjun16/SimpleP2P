@@ -85,8 +85,10 @@ public class PeerConnection implements Runnable {
                 } else if (receivedMessage instanceof HaveMessage) {
                     HaveMessage haveMessage = (HaveMessage) receivedMessage;
                     BitfieldUtils.received(neighborBitfield, haveMessage.getIndex());
-                    if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
-                        peerRegister.addCompletedPeer(neighborID);
+                    synchronized (this) {
+                        if (BitfieldUtils.doesHaveCompleteFile(neighborBitfield)) {
+                            peerRegister.addCompletedPeer(neighborID);
+                        }
                     }
                     if (BitfieldUtils.isInterested(selfBitfield, haveMessage.getIndex())) {
                         synchronized (this) {
