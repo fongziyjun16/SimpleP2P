@@ -244,6 +244,7 @@ public class PeerRegister {
         synchronized (endNeighbors) {
             endNeighbors.add(neighborID);
             if (endNeighbors.size() == PeerInfo.getPeerIDs().size() - 1) {
+                logger.log(Level.INFO, "All neighbors end.");
                 peerSelector.stopScheduler();
                 PeerController.stop();
                 System.exit(0);
