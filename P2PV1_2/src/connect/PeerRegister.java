@@ -42,8 +42,7 @@ public class PeerRegister {
 
     private void buildNegativeConnection() {
         PeerController.threadPool.submit(() -> {
-            try {
-                ServerSocket serverSocket = new ServerSocket(PeerInfo.getPeerPort(selfID));
+            try(ServerSocket serverSocket = new ServerSocket(PeerInfo.getPeerPort(selfID))) {
                 while (true) {
                     Socket connection = serverSocket.accept();
                     try {
@@ -53,13 +52,7 @@ public class PeerRegister {
                                 PeerUtils.getConnectionWholeAddress(connection) +
                                 ". Exception Message: " + e.getMessage());
                     }
-                    synchronized (connectedNeighbors) {
-                        if (connectedNeighbors.size() == PeerInfo.getPeerIDs().size() - 1) {
-                            break;
-                        }
-                    }
                 }
-                serverSocket.close();
             } catch (Exception e) {
                 logger.log(Level.SEVERE, "Fail to build negative connection server");
             }
@@ -247,7 +240,6 @@ public class PeerRegister {
                 logger.log(Level.INFO, "All neighbors end.");
                 peerSelector.stopScheduler();
                 PeerController.stop();
-                System.exit(0);
             }
         }
     }

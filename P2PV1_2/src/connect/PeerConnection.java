@@ -135,6 +135,7 @@ public class PeerConnection implements Runnable {
                     synchronized (this) {
                         oos.writeObject(new EndMessage());
                     }
+                    peerRegister.addCompletedPeer(neighborID);
                     peerRegister.neighborEnd(neighborID);
                     logger.log(Level.INFO, "Receive End from neighbor " + neighborID);
                     break;
@@ -143,6 +144,14 @@ public class PeerConnection implements Runnable {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        synchronized (this) {
+            try {
+                oos.writeObject(new EndMessage());
+            } catch (IOException e) {
+                logger.log(Level.INFO, "Fail to send End Interested to neighbor " + neighborID);
+            }
+        }
+        peerRegister.addCompletedPeer(neighborID);
         logger.log(Level.INFO, "Close Connection with " + neighborID);
     }
 

@@ -1,40 +1,46 @@
 package main;
 
 import config.*;
-import connect.PeerRegister;
 import utils.*;
 
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.logging.*;
 
-public class PeerController {
+public class PeerHandler {
 
     private final int selfID;
 
-    public static List<ReentrantLock> targetFileSegmentLocks = new ArrayList<>();
+    private final byte[] selfBitfield;
+    private final ReentrantReadWriteLock selfBitfieldLock = new ReentrantReadWriteLock();
 
-    public static ExecutorService threadPool = Executors.newCachedThreadPool();
+    private final List<ReentrantLock> targetFileSegmentLocks = new ArrayList<>();
+
+    private final ExecutorService threadPool = Executors.newCachedThreadPool();
 
     // runtime Logger
-    private static final Logger logger = Logger.getLogger(PeerController.class.getName());
+    private final static Logger logger = Logger.getLogger(PeerHandler.class.getName());
 
-    public PeerController(int selfID) {
+    public PeerHandler(int selfID) {
         this.selfID = selfID;
-        byte[] selfBitfield = new byte[BitfieldUtils.bitfieldLength];
+
+        selfBitfield = new byte[BitfieldUtils.bitfieldLength];
         if (PeerInfo.doesPeerHaveFile(selfID)) {
             for (int i = 0; i < BitfieldUtils.pieceNumber; i++) {
                 BitfieldUtils.received(selfBitfield, i);
             }
         }
-        // each piece has one lock
+
         for (int i = 0; i < BitfieldUtils.pieceNumber; i++) {
             targetFileSegmentLocks.add(new ReentrantLock());
         }
+
         fileInitialize();
-        new PeerRegister(selfID, selfBitfield);
+
+        new PeerHub(this);
     }
 
     private void fileInitialize() {
@@ -80,10 +86,29 @@ public class PeerController {
         }
     }
 
-    public static void stop() {
-        threadPool.shutdownNow();
-        logger.log(Level.INFO, "PeerController Stops");
+    public void stopPeerProcess() {
+        logger.log(Level.INFO, "Stop & Exit");
         System.exit(0);
+    }
+
+    public int getSelfID() {
+        return selfID;
+    }
+
+    public byte[] getSelfBitfield() {
+        return selfBitfield;
+    }
+
+    public ReentrantReadWriteLock getSelfBitfieldLock() {
+        return selfBitfieldLock;
+    }
+
+    public List<ReentrantLock> getTargetFileSegmentLocks() {
+        return targetFileSegmentLocks;
+    }
+
+    public ExecutorService getThreadPool() {
+        return threadPool;
     }
 
 }
