@@ -1,9 +1,9 @@
 ## Structure
 
-- Source code files, `Makefile`, and configuration files are in the folder `volumes/p2p`
-- File `jdk-8u341-linux-x64.tar.gz` is needed to be downloaded from [website](https://www.oracle.com/java/technologies/javase/javase8u211-later-archive-downloads.html).
+- Files about the test based on Docker.
+- Source code files, Makefile, and configuration files are in the folder volumes/p2p
+- File jdk-8u341-linux-x64.tar.gz is needed to be downloaded from website.
 
-### Files Structure
 ```
 .
 ├── docker-compose.yml
@@ -39,9 +39,9 @@
         │       ├── PieceReceiver.java
         │       └── PieceSender.java
         ├── Makefile
-        ├── 1001
+        ├── peer_1001
         │   └── thefile
-        ├── 1006
+        ├── peer_1006
         │   └── thefile
         ├── PeerInfo.cfg
         ├── peerProcess.java
@@ -53,14 +53,16 @@
 
 ## How to Test on the UFL Linux Servers
 
-1. Connect to UFL Wifi or VPN
-2. `scp volumes.tar.gz _YOUR_UFL_USER_NAME_@storm.cise.ufl.edu:/cise/homes/_YOUR_UFL_USER_NAME_`
-3. `ssh _YOUR_UFL_USER_NAME_@storm.cise.ufl.edu`
-4. Enter your UFL account password
-5. `tar -zxvf volumes.tar.gz`
-6. `cd volumes/p2p`
-7. `make clean && make`
-8. Move initial files from `project_config_file_large` or `project_config_file_small` to `volumes/p2p/`
-9. `java StartRemotePeers` or `sh StartRemotePeers.sh`
-10. `java ResultVerifier` to check whether all downloaded files are same 
+- Pull down all files this branch in to a folder.
 
+- Run sudo docker build -t jdk8:base . in the folder same as the first step.
+
+- Run make clean && make in the folder volumes/p2p.
+
+- Run sudo docker-compose up in the folder same as the first step.
+
+- There will be a huge amount of log information printed. No worry.
+After all peers download the specific file and detect others also successfully download, all docker containers will stop automatically.
+Run java ResultVerifier in the folder volumes/p2p to check whether all downloaded files are same.
+
+- In the folder volumes/p2p, you can check log information of each peer.
